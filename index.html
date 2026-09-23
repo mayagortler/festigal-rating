@@ -63,7 +63,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .aw-head h2{font-family:var(--display);font-size:38px;line-height:1}
 .aw-head p{margin:0;color:var(--muted);font-size:14px}
 .aw-head p b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
-.aw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-top:1px solid var(--line)}
+.aw-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border-top:1px solid var(--line)}
 .aw{background:var(--surface);padding:14px 16px 16px;min-width:0;display:flex;flex-direction:column;gap:2px}
 .aw .n{font-size:13px;color:var(--muted)}
 .aw .w{font-family:var(--display);font-size:30px;line-height:1.05;overflow-wrap:anywhere;margin-top:2px}
@@ -88,7 +88,7 @@ h1,h2,h3{text-wrap:balance;margin:0}
 @media (max-width:760px){.podium{grid-template-columns:1fr}}
 .aw .tbd{color:var(--muted);font-family:var(--body);font-size:15px;line-height:1.4}
 .aw .a{color:var(--a)} .aw .b{color:var(--b)}
-@media (max-width:720px){.aw-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:860px){.aw-grid{grid-template-columns:1fr 1fr}}
 @media (max-width:440px){.aw .w{font-size:26px}}
 
 /* toolbar */
@@ -201,6 +201,16 @@ dialog::backdrop{background:rgba(4,3,8,.8)}
 .col p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .col .joke{font-size:17px;line-height:1.5}
 .by{color:var(--muted);font-size:13px}
+dialog{--tint:var(--surface)}
+#dlg-detail,#dlg-rate{background:var(--surface);background:linear-gradient(180deg,color-mix(in srgb,var(--tint) 34%,var(--surface)) 0,color-mix(in srgb,var(--tint) 12%,var(--surface)) 220px,var(--surface) 520px)}
+#dlg-detail .dlg-head,#dlg-rate .dlg-head{border-bottom-color:color-mix(in srgb,var(--tint) 30%,var(--line))}
+.contest{display:grid;gap:4px}
+.contest ol{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:14px}
+.medal{display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;min-width:20px;color:#1A1406;vertical-align:middle}
+.medal.m1{background:#E4C45A} .medal.m2{background:#C9C6CF} .medal.m3{background:#C8956A}
+.party{position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden}
+.party span{position:absolute;left:50%;top:62%;font-size:calc(14px*var(--s));animation:fly 1.7s cubic-bezier(.16,1,.3,1) forwards;opacity:0}
+@keyframes fly{0%{opacity:1;transform:translate(-50%,-50%) scale(.4) rotate(0)}70%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy) + 60px)) scale(1) rotate(var(--rot))}}
 .part2{background:var(--surface-2);border-radius:10px;padding:10px 12px;display:grid;gap:4px}
 .part2 .extras{color:var(--muted)}
 .part2 ul{margin:2px 0 0;padding-inline-start:18px;display:grid;gap:3px;font-size:14px}
@@ -437,7 +447,15 @@ function computeAwards(){
   let song=null;Object.values(songs).forEach(s=>{if(!song||s.score>song.score)song=s});
   // match
   let same=0,tot=0;ids.forEach(id=>{const a=rev(id,"a"),b=rev(id,"b");if(a&&b)CATS.forEach(([k])=>{if(num(a[k])&&num(b[k])){tot++;if(a[k]===b[k])same++}})});
-  return{ids,seenIds,dogs,best,fight,ga,gb,cat,star,starPool:seenIds.length?"שראינו":"בקטלוג",song,match:tot?Math.round(same/tot*100):null,matchTot:tot};
+  // most-picked performer of the night
+  const picks={};allRevs.forEach(v=>{const p=String(v.star||"").trim();if(p)picks[p]=(picks[p]||0)+1});
+  let fav=null;Object.entries(picks).forEach(([p,c])=>{if(!fav||c>fav.c)fav={p,c}});
+  // Wikipedia got it wrong: official winner vs your number-one songs
+  let judged=0,wrong=[];
+  ids.forEach(id=>{const w=(S.shows[id].contest||[])[0];if(!w)return;
+    const ones=["a","b"].map(r=>(rev(id,r)?.top3||[])[0]).filter(Boolean);if(!ones.length)return;
+    judged++;if(!ones.includes(w))wrong.push({id,w,ours:ones[0]})});
+  return{fav,judged,wrong,ids,seenIds,dogs,best,fight,ga,gb,cat,star,starPool:seenIds.length?"שראינו":"בקטלוג",song,match:tot?Math.round(same/tot*100):null,matchTot:tot};
 }
 function renderAwards(){
   const A=computeAwards(),N=S.names;
@@ -457,11 +475,13 @@ function renderAwards(){
     <div class="aw-head"><h2 id="aw-title">פרסי הפסטיגלים</h2><p>ראינו <b>${A.seenIds.length}</b> מתוך <b>${A.ids.length}</b> פסטיגלים, וחילקנו <b>${A.dogs}</b> נקניקיות</p></div>
     <div class="aw-grid">
       ${feature}
-      ${cell("פרס המחלוקת",A.fight?`<div class="w">${esc(S.shows[A.fight].title)}</div><div class="d">פער של <b>${fmt1(gap(A.fight))}</b> נקודות בציון המשוקלל</div>`:tbd("עוד לא התווכחתם על כלום"))}
+      ${cell("פרס המחלוקת",A.fight?`<div class="w">${esc(S.shows[A.fight].title)}</div><div class="d">פער של <b>${fmt1(gap(A.fight))==="1"?"נקודה אחת":fmt1(gap(A.fight))+" נקודות"}</b> בציון המשוקלל</div>`:tbd("עוד לא התווכחתם על כלום"))}
       ${cell("השופט/ת הקשוח/ה",judge)}
       ${cell("התאמה זוגית",A.match!=null?`<div class="w">${A.match}%</div><div class="d">מהציונים שנתתם יצאו זהים (${A.matchTot} השוואות)</div>`:tbd("יתגלה כששניכם תדרגו אותו פסטיגל"))}
       ${cell("הקטגוריה המנצחת",A.cat?`<div class="w">${A.cat.l}</div><div class="d"><b>${fmt1(A.cat.m)}</b> נקניקיות בממוצע</div>`:tbd("אחרי הדירוג הראשון"))}
       ${cell("השיר שלא יוצא מהראש",A.song?`<div class="w">${esc(A.song.t)}</div><div class="d">הופיע ${A.song.n===1?"פעם אחת":`<b>${A.song.n}</b> פעמים`} בטופ 3</div>`:tbd("בחרו טופ 3 שירים בדירוג"))}
+      ${cell("הכוכב/ת שכבש/ה אותנו",A.fav?`<div class="w">${esc(A.fav.p)}</div><div class="d">נבחר/ה לכוכב/ת הערב <b>${A.fav.c===1?"פעם אחת":A.fav.c+" פעמים"}</b></div>`:tbd("בחרו כוכב/ת של הערב בדירוג"))}
+      ${cell("ויקיפדיה טעתה",A.wrong.length?`<div class="w">${esc(S.shows[A.wrong[0].id].title)}</div><div class="d">הזוכה הרשמי: <b>${esc(A.wrong[0].w)}</b>. אצלכם במקום הראשון: <b>${esc(A.wrong[0].ours)}</b>. ${A.wrong.length>1?`לא הסכמתם עם הקהל ב־${A.wrong.length} מתוך ${A.judged} פסטיגלים.`:""}</div>`:A.judged?`<div class="w">הסכמתם עם הקהל</div><div class="d">השיר הזוכה היה גם אצלכם במקום הראשון בכל ${A.judged===1?"הפסטיגל שבדקנו":A.judged+" הפסטיגלים"}</div>`:tbd("יתגלה כשתבחרו טופ 3 שירים"))}
       ${cell("הכוכב/ת החוזר/ת",A.star?`<div class="w">${esc(A.star.p)}</div><div class="d">מופיע/ה ב־<b>${A.star.c}</b> פסטיגלים ${A.starPool}</div>`:tbd("אף אחד לא הופיע פעמיים עדיין"))}
     </div>`;
 }
@@ -523,7 +543,9 @@ function renderDetail(id){
     note=worst?`<p class="note">הכי חלוקים על <b>${worst}</b>: פער של ${wd} נקניקיות.</p>`:`<p class="note">תמימות דעים מלאה בכל הקטגוריות.</p>`;
   }
   const col=(r,body)=>`<div class="col ${r}"><div class="who-n">${esc(S.names[r])}</div>${body}</div>`;
-  const songs=r=>{const t=(rev(id,r)?.top3||[]).filter(Boolean);return t.length?`<ol>${t.map(x=>{const by=songBy(s,x);return `<li>${esc(x)}${by?` <span class="by">${esc(by)}</span>`:""}</li>`}).join("")}</ol>`:`<div class="nil">עוד לא נבחרו שירים</div>`};
+  const medal=x=>{const i=(s.contest||[]).indexOf(x);return i<0?"":` <span class="medal m${i+1}">${["זכה במקום הראשון","מקום שני","מקום שלישי"][i]}</span>`};
+  const songs=r=>{const t=(rev(id,r)?.top3||[]).filter(Boolean);return t.length?`<ol>${t.map(x=>{const by=songBy(s,x);return `<li>${esc(x)}${by?` <span class="by">${esc(by)}</span>`:""}${medal(x)}</li>`}).join("")}</ol>`:`<div class="nil">עוד לא נבחרו שירים</div>`};
+  const starPick=r=>{const t=rev(id,r)?.star;return t?`<p class="joke">${esc(t)}</p>`:`<div class="nil">עוד לא נבחר/ה</div>`};
   const joke=r=>{const t=rev(id,r)?.joke;return t?`<p class="joke">״${esc(t)}״</p>`:`<div class="nil">עוד לא נבחרה בדיחה</div>`};
   const words=r=>{const t=rev(id,r)?.review;return t?`<p>${esc(t)}</p>`:`<div class="nil">עוד לא נכתבה סקירה</div>`};
   const mine=rev(id,S.me);
@@ -535,6 +557,7 @@ function renderDetail(id){
         ${s.themeSong?`<p class="kv">שיר הנושא: <b>${esc(s.themeSong)}</b>${s.themeSongBasedOn?` (לפי ${esc(s.themeSongBasedOn)})`:""}</p>`:""}
         ${s.cast&&s.cast.length?`<div class="kv">משתתפים</div>${list(s.cast)}`:""}
         ${s.songList&&s.songList.length?`<details class="tracks"><summary>כל השירים (${s.songList.length})</summary><ol>${s.songList.map(o=>`<li>${esc(o.t)} <span class="by">${esc(o.by||"")}</span></li>`).join("")}</ol></details>`:""}
+        ${contestHTML(s)}
         ${part2HTML(s)}
         <div class="acts">
           <button type="button" class="btn sm" data-watch="${esc(id)}" aria-pressed="${isSeen}">${isSeen?"ראינו, לבטל סימון":"סימון כראינו"}</button>
@@ -544,6 +567,7 @@ function renderDetail(id){
     </div>`;
   const scores=(isSeen||ra||rb)?`
       <div class="sec"><div class="board">${rows}</div>${note}</div>
+      <div class="sec"><h3>הכוכב/ת של הערב</h3><div class="pair">${col("a",starPick("a"))}${col("b",starPick("b"))}</div></div>
       <div class="sec"><h3>הבדיחה האהובה</h3><div class="pair">${col("a",joke("a"))}${col("b",joke("b"))}</div></div>
       <div class="sec"><h3>טופ 3 שירים</h3><div class="pair">${col("a",songs("a"))}${col("b",songs("b"))}</div></div>
       <div class="sec"><h3>הסקירה</h3><div class="pair">${col("a",words("a"))}${col("b",words("b"))}</div></div>`
@@ -557,6 +581,10 @@ function renderDetail(id){
       <button type="button" class="btn" data-edit="${esc(id)}">עריכת תקציר</button>
     </div></div>`;
 }
+function contestHTML(s){
+  const c=s.contest||[];if(!c.length)return "";
+  return `<div class="contest"><div class="kv">תוצאות התחרות הרשמיות</div><ol>${c.map((t,i)=>`<li><span class="medal m${i+1}">${i+1}</span> ${esc(t)} <span class="by">${esc(songBy(s,t))}</span></li>`).join("")}</ol></div>`;
+}
 function part2HTML(s){
   const p=s.part2;if(!p)return s.guests&&s.guests.length?`<p class="kv">אורחים: <b>${esc(s.guests.join(", "))}</b></p>`:"";
   const q=encodeURIComponent(s.title+" "+(s.year||""));
@@ -566,7 +594,8 @@ function part2HTML(s){
     ${p.extras&&p.extras.length?`<p class="kv" style="margin-top:4px">עוד קטעים מהמופע שאינם משירי התחרות:</p><ul class="extras">${p.extras.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
     <a class="src" href="https://www.youtube.com/@myfestigalofficial/search?query=${q}" target="_blank" rel="noopener">לצפייה בערוץ הרשמי של הפסטיגל</a></div>`;
 }
-function openDetail(id){S.openId=id;renderDetail(id);const d=$("#dlg-detail");if(!d.open)d.showModal()}
+function applyTint(d,s){if(s&&s.tint)d.style.setProperty("--tint",s.tint);else d.style.removeProperty("--tint")}
+function openDetail(id){S.openId=id;const d=$("#dlg-detail");applyTint(d,S.shows[id]);renderDetail(id);if(!d.open)d.showModal()}
 /* ---------- rate form ---------- */
 function songBy(s,title){const x=(s.songList||[]).find(o=>o.t===title);return x?x.by:""}
 function songPicker(s,i,cur){
@@ -595,7 +624,7 @@ function paintScale(fs,v,pop){
 function openRate(id){
   const s=S.shows[id],r=S.me,v=rev(id,r)||{},t=v.top3||[];
   const d=$("#dlg-rate");
-  d.style.setProperty("--rc",`var(--${r})`);
+  d.style.setProperty("--rc",`var(--${r})`);applyTint(d,s);
   d.innerHTML=`<form class="dlg" id="rate-form" novalidate>
     <div class="dlg-head"><div><h2>${esc(s.title)}</h2><div class="sub">הדירוג של ${esc(S.names[r])}: מנקניקיה אחת עד חמש</div></div><button type="button" class="x" data-close aria-label="סגירה">×</button></div>
     <div class="dlg-body">
@@ -603,6 +632,7 @@ function openRate(id){
       <div class="crit overall-crit"><span class="lbl" id="l-overall">דירוג כללי</span><span class="val" id="v-overall">${n10(v.overall)?v.overall+" מתוך 10":"לא דורג"}</span>
         <fieldset class="tenscale" aria-labelledby="l-overall">${Array.from({length:10},(_,i)=>i+1).map(i=>`<input type="radio" id="r-overall-${i}" name="overall" value="${i}"${v.overall===i?" checked":""}><label for="r-overall-${i}">${i}</label>`).join("")}</fieldset>
         <span class="help" style="grid-column:1/-1">הציון המשוקלל: חצי מהנקניקיות וחצי מהדירוג הכללי.</span></div>
+      ${s.cast&&s.cast.length?`<div class="field"><label for="star">הכוכב/ת של הערב</label><select class="input" id="star" name="star"><option value="">בחירת משתתף/ת</option>${s.cast.map(c=>`<option value="${esc(c)}"${v.star===c?" selected":""}>${esc(c)}</option>`).join("")}</select></div>`:""}
       <div class="field"><label for="joke">בדיחה אהובה</label>
         <textarea class="input" id="joke" name="joke" maxlength="500" placeholder="הבדיחה שעוד נצטט אחד לשנייה">${esc(v.joke||"")}</textarea></div>
       <div class="field"><span class="lbl" id="songs-l">טופ 3 שירים</span>
@@ -632,13 +662,34 @@ function openRate(id){
       return;
     }
     out.joke=String(fd.get("joke")||"").trim();
+    out.star=String(fd.get("star")||"").trim();
     out.top3=[0,1,2].map(i=>String(fd.get("song"+i)||"").trim());
     out.review=String(fd.get("review")||"").trim();
     const btn=$("#rate-save");btn.disabled=true;btn.textContent="שומר...";
     const res=await write(()=>B.saveReview(id,r,out),"הדירוג נשמר");
     btn.disabled=false;btn.textContent="שמירת הדירוג";
-    if(res.ok){d.close();openDetail(id)}else{er.textContent=res.msg;er.hidden=false}
+    if(res.ok){d.close();openDetail(id);if(rev(id,other(r)))celebrate(s.title)}else{er.textContent=res.msg;er.hidden=false}
   });
+}
+
+/* ---------- celebration: both of you have rated ---------- */
+function celebrate(title){
+  toast("שניכם דירגתם את "+title+"!");
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const layer=document.createElement("div");layer.className="party";layer.setAttribute("aria-hidden","true");
+  const W=innerWidth,H=innerHeight,n=Math.min(36,Math.round(W/12));
+  for(let i=0;i<n;i++){
+    const el=document.createElement("span");el.innerHTML=hd();
+    const ang=-Math.PI/2+(Math.random()-.5)*Math.PI*1.1,dist=H*(.35+Math.random()*.4);
+    el.style.setProperty("--dx",Math.round(Math.cos(ang)*dist*.9)+"px");
+    el.style.setProperty("--dy",Math.round(Math.sin(ang)*dist)+"px");
+    el.style.setProperty("--rot",Math.round((Math.random()-.5)*720)+"deg");
+    el.style.setProperty("--s",(1.4+Math.random()*1.4).toFixed(2));
+    el.style.animationDelay=Math.round(Math.random()*120)+"ms";
+    layer.appendChild(el);
+  }
+  document.body.appendChild(layer);
+  setTimeout(()=>layer.remove(),2000);
 }
 
 /* ---------- synopsis edit ---------- */
