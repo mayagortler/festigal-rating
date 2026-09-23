@@ -202,6 +202,7 @@ dialog::backdrop{background:rgba(4,3,8,.8)}
 .col .joke{font-size:17px;line-height:1.5}
 .by{color:var(--muted);font-size:13px}
 .part2{background:var(--surface-2);border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+.part2 .extras{color:var(--muted)}
 .part2 ul{margin:2px 0 0;padding-inline-start:18px;display:grid;gap:3px;font-size:14px}
 .tracks summary{cursor:pointer;font-size:14px;font-weight:500;color:var(--ink);padding-block:4px}
 .tracks summary:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
@@ -558,9 +559,12 @@ function renderDetail(id){
 }
 function part2HTML(s){
   const p=s.part2;if(!p)return s.guests&&s.guests.length?`<p class="kv">אורחים: <b>${esc(s.guests.join(", "))}</b></p>`:"";
+  const q=encodeURIComponent(s.title+" "+(s.year||""));
   return `<div class="part2"><div class="kv">החלק השני של המופע</div>
     <p class="kv">אמנים אורחים: <b>${esc(p.guests.join(", "))}</b></p>
-    ${p.items&&p.items.length?`<ul>${p.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<p class="kv">לא מצאנו פירוט של השירים בחלק הזה.</p>`}</div>`;
+    ${p.items&&p.items.length?`<ul>${p.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
+    ${p.extras&&p.extras.length?`<p class="kv" style="margin-top:4px">עוד קטעים מהמופע שאינם משירי התחרות:</p><ul class="extras">${p.extras.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
+    <a class="src" href="https://www.youtube.com/@myfestigalofficial/search?query=${q}" target="_blank" rel="noopener">לצפייה בערוץ הרשמי של הפסטיגל</a></div>`;
 }
 function openDetail(id){S.openId=id;renderDetail(id);const d=$("#dlg-detail");if(!d.open)d.showModal()}
 /* ---------- rate form ---------- */
