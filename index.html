@@ -69,16 +69,27 @@ h1,h2,h3{text-wrap:balance;margin:0}
 .aw .w{font-family:var(--display);font-size:30px;line-height:1.05;overflow-wrap:anywhere;margin-top:2px}
 .aw .d{font-size:13px;color:var(--muted)}
 .aw .d b{color:var(--ink);font-weight:500}
-.aw.feature{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;padding:16px 18px;background:linear-gradient(90deg,rgba(255,61,139,.10),transparent 60%),var(--surface)}
-.aw.feature .thumb{width:72px;height:72px;border-radius:10px;overflow:hidden;background:var(--surface-2);flex:none}
-.aw.feature .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.aw.feature .w{font-size:40px}
-.aw.feature .big{font-family:var(--display);font-size:56px;line-height:.9;color:var(--accent);font-variant-numeric:tabular-nums;text-align:center}
-.aw.feature .big small{display:block;font-family:var(--body);font-size:12px;color:var(--muted)}
+.aw.feature{grid-column:1/-1;padding:16px 18px;gap:10px;background:linear-gradient(90deg,rgba(255,61,139,.10),transparent 60%),var(--surface)}
+.podium{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:12px;align-items:stretch}
+.pod{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--surface-2);min-width:0}
+.pod .pl{font-family:var(--display);font-size:34px;line-height:1;color:var(--muted);min-width:.8em;text-align:center}
+.pod.first{background:rgba(255,61,139,.14);outline:1px solid rgba(255,61,139,.45);outline-offset:-1px}
+.pod.first .pl,.pod.first .sc{color:var(--accent)}
+.pod .thumb{width:52px;height:52px;border-radius:8px;overflow:hidden;background:var(--surface);flex:none}
+.pod.first .thumb{width:64px;height:64px}
+.pod .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.pod-body{min-width:0}
+.pod .w{font-size:24px;margin:0}
+.pod.first .w{font-size:30px}
+.pod .sc{font-family:var(--display);font-size:34px;line-height:1;font-variant-numeric:tabular-nums;text-align:center;display:flex;flex-direction:column;align-items:center}
+.pod .sc small{font-size:10px;line-height:1;margin-top:2px}
+.pod.empty{background:transparent;outline:1.5px dashed var(--line);outline-offset:-1.5px}
+.pod.empty .w{font-family:var(--body);font-size:15px;color:var(--muted)}
+@media (max-width:760px){.podium{grid-template-columns:1fr}}
 .aw .tbd{color:var(--muted);font-family:var(--body);font-size:15px;line-height:1.4}
 .aw .a{color:var(--a)} .aw .b{color:var(--b)}
 @media (max-width:720px){.aw-grid{grid-template-columns:1fr 1fr}}
-@media (max-width:440px){.aw.feature{grid-template-columns:auto 1fr}.aw.feature .big{grid-column:1/-1;text-align:start}.aw .w{font-size:26px}}
+@media (max-width:440px){.aw .w{font-size:26px}}
 
 /* toolbar */
 .bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -415,17 +426,18 @@ function renderAwards(){
   const A=computeAwards(),N=S.names;
   const tbd=t=>`<div class="tbd">${t}</div>`;
   const cell=(name,body)=>`<div class="aw"><div class="n">${name}</div>${body}</div>`;
-  let feature;
-  if(A.best){
-    const s=S.shows[A.best],src=imgSrc(s);
-    feature=`<div class="aw feature">${src?`<div class="thumb"><img src="${esc(src)}" alt=""></div>`:""}<div><div class="n">הפסטיגל של השנים</div><div class="w">${esc(s.title)}</div><div class="d">${esc(s.year||"")}</div></div><div class="big">${fmt1(couple(A.best))}<small>נקניקיות בממוצע</small></div></div>`;
-  }else feature=`<div class="aw feature"><div><div class="n">הפסטיגל של השנים</div><div class="w">עוד לא הוכרז</div><div class="d">הפרס הראשון יחולק אחרי הדירוג הראשון.</div></div></div>`;
+  const ranked=A.ids.filter(id=>couple(id)!=null).sort((p,q)=>couple(q)-couple(p)||(Number(S.shows[q].year)||0)-(Number(S.shows[p].year)||0)).slice(0,3);
+  const place=i=>{const id=ranked[i];
+    if(!id)return `<li class="pod empty"><span class="pl">${i+1}</span><div class="pod-body"><div class="w">עוד פנוי</div><div class="d">מחכה לדירוג הבא</div></div></li>`;
+    const s=S.shows[id],src=imgSrc(s);
+    return `<li class="pod${i===0?" first":""}"><span class="pl">${i+1}</span>${src?`<div class="thumb"><img src="${esc(src)}" alt=""></div>`:""}<div class="pod-body"><div class="w">${esc(s.title)}</div><div class="d">${esc(s.year||"")}</div></div><div class="sc">${fmt1(couple(id))}<small>${hd()}</small></div></li>`};
+  const feature=`<div class="aw feature"><div class="n">טופ 3 פסטיגלים</div><ol class="podium">${place(0)}${place(1)}${place(2)}</ol></div>`;
   const judge=(A.ga!=null&&A.gb!=null)
     ?(()=>{const r=A.ga<A.gb?"a":A.gb<A.ga?"b":null;if(!r)return `<div class="w">תיקו</div><div class="d">שניכם נותנים <b>${fmt1(A.ga)}</b> בממוצע</div>`;
       return `<div class="w ${r}">${esc(N[r])}</div><div class="d">נותן/ת <b>${fmt1(r==="a"?A.ga:A.gb)}</b> בממוצע, לעומת ${fmt1(r==="a"?A.gb:A.ga)} אצל ${esc(N[other(r)])}</div>`})()
     :tbd("צריך דירוג משניכם כדי לדעת");
   $("#awards").innerHTML=`
-    <div class="aw-head"><h2 id="aw-title">פרסי הפנקס</h2><p>ראינו <b>${A.seenIds.length}</b> מתוך <b>${A.ids.length}</b> פסטיגלים, וחילקנו <b>${A.dogs}</b> נקניקיות</p></div>
+    <div class="aw-head"><h2 id="aw-title">פרסי הפסטיגלים</h2><p>ראינו <b>${A.seenIds.length}</b> מתוך <b>${A.ids.length}</b> פסטיגלים, וחילקנו <b>${A.dogs}</b> נקניקיות</p></div>
     <div class="aw-grid">
       ${feature}
       ${cell("פרס המחלוקת",A.fight?`<div class="w">${esc(S.shows[A.fight].title)}</div><div class="d">פער של <b>${fmt1(gap(A.fight))}</b> נקניקיות ביניכם</div>`:tbd("עוד לא התווכחתם על כלום"))}
@@ -433,7 +445,7 @@ function renderAwards(){
       ${cell("התאמה זוגית",A.match!=null?`<div class="w">${A.match}%</div><div class="d">מהציונים שנתתם יצאו זהים (${A.matchTot} השוואות)</div>`:tbd("יתגלה כששניכם תדרגו אותו פסטיגל"))}
       ${cell("הקטגוריה המנצחת",A.cat?`<div class="w">${A.cat.l}</div><div class="d"><b>${fmt1(A.cat.m)}</b> נקניקיות בממוצע</div>`:tbd("אחרי הדירוג הראשון"))}
       ${cell("השיר שלא יוצא מהראש",A.song?`<div class="w">${esc(A.song.t)}</div><div class="d">הופיע ${A.song.n===1?"פעם אחת":`<b>${A.song.n}</b> פעמים`} בטופ 3</div>`:tbd("בחרו טופ 3 שירים בדירוג"))}
-      ${cell("הכוכב/ת של הפנקס",A.star?`<div class="w">${esc(A.star.p)}</div><div class="d">מופיע/ה ב־<b>${A.star.c}</b> פסטיגלים ${A.starPool}</div>`:tbd("אף אחד לא הופיע פעמיים עדיין"))}
+      ${cell("הכוכב/ת החוזר/ת",A.star?`<div class="w">${esc(A.star.p)}</div><div class="d">מופיע/ה ב־<b>${A.star.c}</b> פסטיגלים ${A.starPool}</div>`:tbd("אף אחד לא הופיע פעמיים עדיין"))}
     </div>`;
 }
 
