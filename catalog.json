@@ -76,7 +76,16 @@
   ],
   "source": "https://he.wikipedia.org/wiki/פסטיגל",
   "id": "fg2003",
-  "image": "covers/fg2003.jpg"
+  "image": "covers/fg2003.jpg",
+  "part2": {
+   "guests": [
+    "צביקה פיק",
+    "יעל בר זוהר"
+   ],
+   "items": [
+    "מחרוזת משירי צביקה פיק"
+   ]
+  }
  },
  {
   "title": "לא יאומן כי פסטיגל",
@@ -146,7 +155,16 @@
   ],
   "source": "https://he.wikipedia.org/wiki/פסטיגל",
   "id": "fg2004",
-  "image": "covers/fg2004.jpg"
+  "image": "covers/fg2004.jpg",
+  "part2": {
+   "guests": [
+    "נינט טייב"
+   ],
+   "items": [
+    "נינט טייב במחרוזת שירי גשם",
+    "מחרוזת משירי אורנה ומשה דץ"
+   ]
+  }
  },
  {
   "title": "פסטיגל גיבורי על",
@@ -217,7 +235,17 @@
   ],
   "source": "https://he.wikipedia.org/wiki/פסטיגל",
   "id": "fg2005",
-  "image": "covers/fg2005.jpg"
+  "image": "covers/fg2005.jpg",
+  "part2": {
+   "guests": [
+    "ציפי שביט",
+    "שירי מימון",
+    "הראל סקעת"
+   ],
+   "items": [
+    "מחרוזת שירי Queen בעברית"
+   ]
+  }
  },
  {
   "title": "פסטיגל גיבורי הממלכה האבודה",
@@ -291,7 +319,14 @@
   ],
   "source": "https://he.wikipedia.org/wiki/פסטיגל",
   "id": "fg2006",
-  "image": "covers/fg2006.jpg"
+  "image": "covers/fg2006.jpg",
+  "part2": {
+   "guests": [
+    "רבקה מיכאלי",
+    "מרגלית צנעני (מרגול)"
+   ],
+   "items": []
+  }
  },
  {
   "title": "פסטיגל על הזמן",
@@ -363,7 +398,20 @@
   ],
   "source": "https://he.wikipedia.org/wiki/פסטיגל",
   "id": "fg2007",
-  "image": "covers/fg2007.jpg"
+  "image": "covers/fg2007.jpg",
+  "part2": {
+   "guests": [
+    "הראל סקעת",
+    "רינת גבאי"
+   ],
+   "items": [
+    "מחרוזת משירי הראל סקעת",
+    "מחרוזת משירי רינת גבאי",
+    "מחרוזת משירי הפיג'מות",
+    "מחרוזת משירי יובל המבולבל",
+    "מחרוזת שירי ארץ ישראל"
+   ]
+  }
  },
  {
   "title": "תפוס ת'פסטיגל",
@@ -442,7 +490,13 @@
   ],
   "source": "https://he.wikipedia.org/wiki/פסטיגל",
   "id": "fg2008",
-  "image": "covers/fg2008.jpg"
+  "image": "covers/fg2008.jpg",
+  "part2": {
+   "guests": [
+    "שלומי שבת"
+   ],
+   "items": []
+  }
  },
  {
   "title": "קונג פו פסטיגל",
@@ -508,7 +562,15 @@
   ],
   "source": "https://he.wikipedia.org/wiki/פסטיגל",
   "id": "fg2009",
-  "image": "covers/fg2009.jpg"
+  "image": "covers/fg2009.jpg",
+  "part2": {
+   "guests": [
+    "אייל גולן"
+   ],
+   "items": [
+    "מחרוזת משירי אייל גולן"
+   ]
+  }
  },
  {
   "title": "לילה מטורף בפסטיגל",
@@ -579,6 +641,15 @@
   ],
   "source": "https://he.wikipedia.org/wiki/פסטיגל",
   "id": "fg2010",
-  "image": "covers/fg2010.jpg"
+  "image": "covers/fg2010.jpg",
+  "part2": {
+   "guests": [
+    "ריטה",
+    "דיאנה גולבי"
+   ],
+   "items": [
+    "חגיגת 30 שנה לפסטיגל: שירי פסטיגל ותיקים חזרו לבמה, ביניהם \"יד ביד\", \"מיכאל\", \"לעוף\" ו\"קטן זה הכי כיף בעולם\""
+   ]
+  }
  }
 ]

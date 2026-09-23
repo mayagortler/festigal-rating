@@ -201,6 +201,8 @@ dialog::backdrop{background:rgba(4,3,8,.8)}
 .col p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .col .joke{font-size:17px;line-height:1.5}
 .by{color:var(--muted);font-size:13px}
+.part2{background:var(--surface-2);border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+.part2 ul{margin:2px 0 0;padding-inline-start:18px;display:grid;gap:3px;font-size:14px}
 .tracks summary{cursor:pointer;font-size:14px;font-weight:500;color:var(--ink);padding-block:4px}
 .tracks summary:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
 .tracks ol{margin:8px 0 0;padding-inline-start:22px;display:grid;gap:4px;font-size:14px}
@@ -236,7 +238,17 @@ textarea.input{min-height:96px;resize:vertical}
 .err{color:var(--danger);font-size:14px;margin:0}
 .foot-err{flex-basis:100%}
 .crit.missing .lbl{color:var(--danger)}
-.crit.missing .hdscale label{border-color:var(--danger)}
+.crit.missing .hdscale label,.crit.missing .tenscale label{border-color:var(--danger)}
+.tenscale{grid-column:1/-1;display:grid;grid-template-columns:repeat(10,1fr);gap:4px;border:0;padding:0;margin:0}
+.tenscale input{position:absolute;opacity:0;pointer-events:none}
+.tenscale label{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-family:var(--display);font-size:24px;cursor:pointer;font-variant-numeric:tabular-nums;transition:background .15s,color .15s,transform .1s}
+.tenscale label:active{transform:scale(.94)}
+.tenscale input:checked+label{background:var(--rc,var(--accent));border-color:var(--rc,var(--accent));color:var(--accent-ink)}
+.tenscale input:focus-visible+label{outline:2.5px solid var(--ink);outline-offset:1px}
+.overall-crit{border-top:1px solid var(--line);margin-top:4px}
+.board .sub{font-size:13px;color:var(--muted)}
+.board .c.sub{font-variant-numeric:tabular-nums;font-size:14px}
+.board .c.sub.a{color:var(--a)} .board .c.sub.b{color:var(--b)}
 .toast{position:fixed;inset-inline:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));margin-inline:auto;max-width:420px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-size:15px;box-shadow:var(--shadow);z-index:100}
 .offline{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:16px}
 </style>
@@ -283,7 +295,7 @@ textarea.input{min-height:96px;resize:vertical}
       <label for="sort" class="help">מיון</label>
       <select id="sort" class="sort">
         <option value="year">לפי שנה</option>
-        <option value="score">לפי נקניקיות</option>
+        <option value="score">לפי ציון</option>
         <option value="gap">לפי מחלוקת</option>
       </select>
     </div>
@@ -302,7 +314,7 @@ textarea.input{min-height:96px;resize:vertical}
 
 <script>
 (function(){
-const CATS=[["songs","שירים"],["cast","משתתפים"],["plot","עלילה"],["theme","שיר נושא"],["stage","תפאורה"]];
+const CATS=[["songs","שירים"],["cast","משתתפים"],["plot","עלילה"],["theme","שיר נושא"],["stage","תפאורה"],["part2","החלק השני"]];
 const S={shows:{},reviews:{},names:{a:"מאיה",b:"מאיר"},me:"a",loading:true,readOnly:false,sort:"year",filter:"all",openId:null,code:""};
 try{S.code=localStorage.getItem("fg-code")||"";const m=localStorage.getItem("fg-me");if(m==="a"||m==="b")S.me=m;const so=localStorage.getItem("fg-sort");if(so)S.sort=so;const fi=localStorage.getItem("fg-filter");if(fi)S.filter=fi;}catch(e){}
 
@@ -316,7 +328,11 @@ const num=v=>typeof v==="number"&&v>=1&&v<=5;
 const hd=(on=true)=>`<svg class="hd${on?"":" off"}" aria-hidden="true"><use href="#hotdog"/></svg>`;
 const hdRow=v=>{const n=Math.round(v||0);let h="";for(let i=1;i<=5;i++)h+=hd(i<=n);return `<span class="hdrow" role="img" aria-label="${v} מתוך 5 נקניקיות">${h}</span>`};
 function rev(showId,r){return S.reviews[rid(showId,r)]||null}
-function personScore(showId,r){const v=rev(showId,r);if(!v)return null;return avg(CATS.map(([k])=>v[k]).filter(num))}
+const n10=v=>typeof v==="number"&&v>=1&&v<=10;
+// Hot dog average for one rater (1-5).
+function dogScore(showId,r){const v=rev(showId,r);if(!v)return null;return avg(CATS.map(([k])=>v[k]).filter(num))}
+// Combined score (1-10): half hot dogs (scaled to 10), half the overall rating. Without an overall rating, hot dogs alone.
+function personScore(showId,r){const d=dogScore(showId,r);if(d==null)return null;const o=rev(showId,r).overall;return n10(o)?(d*2+o)/2:d*2}
 function couple(showId){return avg(["a","b"].map(r=>personScore(showId,r)).filter(x=>x!=null))}
 function gap(showId){const a=personScore(showId,"a"),b=personScore(showId,"b");return a!=null&&b!=null?Math.abs(a-b):null}
 function seen(id){const s=S.shows[id];return !!(s&&(s.watched===true||rev(id,"a")||rev(id,"b")))}
@@ -430,7 +446,7 @@ function renderAwards(){
   const place=i=>{const id=ranked[i];
     if(!id)return `<li class="pod empty"><span class="pl">${i+1}</span><div class="pod-body"><div class="w">עוד פנוי</div><div class="d">מחכה לדירוג הבא</div></div></li>`;
     const s=S.shows[id],src=imgSrc(s);
-    return `<li class="pod${i===0?" first":""}"><span class="pl">${i+1}</span>${src?`<div class="thumb"><img src="${esc(src)}" alt=""></div>`:""}<div class="pod-body"><div class="w">${esc(s.title)}</div><div class="d">${esc(s.year||"")}</div></div><div class="sc">${fmt1(couple(id))}<small>${hd()}</small></div></li>`};
+    return `<li class="pod${i===0?" first":""}"><span class="pl">${i+1}</span>${src?`<div class="thumb"><img src="${esc(src)}" alt=""></div>`:""}<div class="pod-body"><div class="w">${esc(s.title)}</div><div class="d">${esc(s.year||"")}</div></div><div class="sc">${fmt1(couple(id))}<small>מתוך 10</small></div></li>`};
   const feature=`<div class="aw feature"><div class="n">טופ 3 פסטיגלים</div><ol class="podium">${place(0)}${place(1)}${place(2)}</ol></div>`;
   const judge=(A.ga!=null&&A.gb!=null)
     ?(()=>{const r=A.ga<A.gb?"a":A.gb<A.ga?"b":null;if(!r)return `<div class="w">תיקו</div><div class="d">שניכם נותנים <b>${fmt1(A.ga)}</b> בממוצע</div>`;
@@ -440,7 +456,7 @@ function renderAwards(){
     <div class="aw-head"><h2 id="aw-title">פרסי הפסטיגלים</h2><p>ראינו <b>${A.seenIds.length}</b> מתוך <b>${A.ids.length}</b> פסטיגלים, וחילקנו <b>${A.dogs}</b> נקניקיות</p></div>
     <div class="aw-grid">
       ${feature}
-      ${cell("פרס המחלוקת",A.fight?`<div class="w">${esc(S.shows[A.fight].title)}</div><div class="d">פער של <b>${fmt1(gap(A.fight))}</b> נקניקיות ביניכם</div>`:tbd("עוד לא התווכחתם על כלום"))}
+      ${cell("פרס המחלוקת",A.fight?`<div class="w">${esc(S.shows[A.fight].title)}</div><div class="d">פער של <b>${fmt1(gap(A.fight))}</b> נקודות בציון המשוקלל</div>`:tbd("עוד לא התווכחתם על כלום"))}
       ${cell("השופט/ת הקשוח/ה",judge)}
       ${cell("התאמה זוגית",A.match!=null?`<div class="w">${A.match}%</div><div class="d">מהציונים שנתתם יצאו זהים (${A.matchTot} השוואות)</div>`:tbd("יתגלה כששניכם תדרגו אותו פסטיגל"))}
       ${cell("הקטגוריה המנצחת",A.cat?`<div class="w">${A.cat.l}</div><div class="d"><b>${fmt1(A.cat.m)}</b> נקניקיות בממוצע</div>`:tbd("אחרי הדירוג הראשון"))}
@@ -473,8 +489,8 @@ function renderList(){
     const meta=[s.year,s.theme].filter(Boolean).join(" | ");
     const stub=!isSeen?`<div class="unseen-tag">עוד לא ראינו</div>`
       :c==null?'<div class="score none">טרם</div><div class="of">דרגו אותו</div>'
-      :`<div class="score">${fmt1(c)}</div><div class="of">${hd()} מתוך 5</div>`;
-    return `<button type="button" class="ticket${isSeen?"":" unseen"}" style="--i:${i}" data-open="${esc(id)}" aria-label="${esc(s.title)}${isSeen?", "+(c==null?"טרם דורג":fmt1(c)+" נקניקיות מתוך 5"):", עוד לא ראינו"}">
+      :`<div class="score">${fmt1(c)}</div><div class="of">מתוך 10</div>`;
+    return `<button type="button" class="ticket${isSeen?"":" unseen"}" style="--i:${i}" data-open="${esc(id)}" aria-label="${esc(s.title)}${isSeen?", "+(c==null?"טרם דורג":fmt1(c)+" מתוך 10"):", עוד לא ראינו"}">
       <div class="art">${src?`<img src="${esc(src)}" alt="" loading="lazy">`:""}</div>
       <div class="t-main">
         <div><div class="t-title">${esc(s.title)}</div><div class="t-meta">${esc(meta)}</div></div>
@@ -495,8 +511,11 @@ function renderDetail(id){
   const c=(v,r)=>num(v)?`<div class="c ${r}">${hdRow(v)}</div>`:`<div class="c nil">טרם</div>`;
   let rows=`<div>קטגוריה</div><div class="h a">${esc(S.names.a)}</div><div class="h b">${esc(S.names.b)}</div>`;
   CATS.forEach(([k,l])=>{rows+=`<div>${l}</div>${c(ra?.[k],"a")}${c(rb?.[k],"b")}`});
-  const pa=personScore(id,"a"),pb=personScore(id,"b");
-  rows+=`<div class="tot">ממוצע</div><div class="tot c a">${pa!=null?fmt1(pa):"טרם"}</div><div class="tot c b">${pb!=null?fmt1(pb):"טרם"}</div>`;
+  const da=dogScore(id,"a"),db=dogScore(id,"b"),pa=personScore(id,"a"),pb=personScore(id,"b");
+  const cell2=(v,r,t)=>`<div class="c ${r}${t?" "+t:""}">${v!=null?v:"טרם"}</div>`;
+  rows+=`<div class="sub">ממוצע נקניקיות</div>${cell2(da!=null?fmt1(da)+" / 5":null,"a","sub")}${cell2(db!=null?fmt1(db)+" / 5":null,"b","sub")}`;
+  rows+=`<div class="sub">דירוג כללי</div>${cell2(n10(ra?.overall)?ra.overall+" / 10":null,"a","sub")}${cell2(n10(rb?.overall)?rb.overall+" / 10":null,"b","sub")}`;
+  rows+=`<div class="tot">ציון משוקלל</div><div class="tot c a">${pa!=null?fmt1(pa):"טרם"}</div><div class="tot c b">${pb!=null?fmt1(pb):"טרם"}</div>`;
   let note="";
   if(ra&&rb){
     let worst=null,wd=0;CATS.forEach(([k,l])=>{if(num(ra[k])&&num(rb[k])){const g=Math.abs(ra[k]-rb[k]);if(g>wd){wd=g;worst=l}}});
@@ -515,7 +534,7 @@ function renderDetail(id){
         ${s.themeSong?`<p class="kv">שיר הנושא: <b>${esc(s.themeSong)}</b>${s.themeSongBasedOn?` (לפי ${esc(s.themeSongBasedOn)})`:""}</p>`:""}
         ${s.cast&&s.cast.length?`<div class="kv">משתתפים</div>${list(s.cast)}`:""}
         ${s.songList&&s.songList.length?`<details class="tracks"><summary>כל השירים (${s.songList.length})</summary><ol>${s.songList.map(o=>`<li>${esc(o.t)} <span class="by">${esc(o.by||"")}</span></li>`).join("")}</ol></details>`:""}
-        ${s.guests&&s.guests.length?`<p class="kv">אורחים: <b>${esc(s.guests.join(", "))}</b></p>`:""}
+        ${part2HTML(s)}
         <div class="acts">
           <button type="button" class="btn sm" data-watch="${esc(id)}" aria-pressed="${isSeen}">${isSeen?"ראינו, לבטל סימון":"סימון כראינו"}</button>
         </div>
@@ -537,6 +556,12 @@ function renderDetail(id){
       <button type="button" class="btn" data-edit="${esc(id)}">עריכת תקציר</button>
     </div></div>`;
 }
+function part2HTML(s){
+  const p=s.part2;if(!p)return s.guests&&s.guests.length?`<p class="kv">אורחים: <b>${esc(s.guests.join(", "))}</b></p>`:"";
+  return `<div class="part2"><div class="kv">החלק השני של המופע</div>
+    <p class="kv">אמנים אורחים: <b>${esc(p.guests.join(", "))}</b></p>
+    ${p.items&&p.items.length?`<ul>${p.items.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<p class="kv">לא מצאנו פירוט של השירים בחלק הזה.</p>`}</div>`;
+}
 function openDetail(id){S.openId=id;renderDetail(id);const d=$("#dlg-detail");if(!d.open)d.showModal()}
 /* ---------- rate form ---------- */
 function songBy(s,title){const x=(s.songList||[]).find(o=>o.t===title);return x?x.by:""}
@@ -553,8 +578,8 @@ function syncSongs(f){
   sels.forEach((sel,i)=>[...sel.options].forEach(o=>{o.disabled=!!o.value&&picked.some((v,j)=>j!==i&&v===o.value)}));
 }
 const WORD=["","נקניקיה אחת","2 נקניקיות","3 נקניקיות","4 נקניקיות","5 נקניקיות"];
-function critHTML(k,l,val){
-  let h=`<div class="crit"><span class="lbl" id="l-${k}">${l}</span><span class="val" id="v-${k}">${val?WORD[val]:"לא דורג"}</span><fieldset class="hdscale" aria-labelledby="l-${k}" data-k="${k}">`;
+function critHTML(k,l,val,hint){
+  let h=`<div class="crit"><span class="lbl" id="l-${k}">${l}${hint?`<span class="help" style="display:block;font-weight:400">${esc(hint)}</span>`:""}</span><span class="val" id="v-${k}">${val?WORD[val]:"לא דורג"}</span><fieldset class="hdscale" aria-labelledby="l-${k}" data-k="${k}">`;
   for(let i=1;i<=5;i++)h+=`<input type="radio" id="r-${k}-${i}" name="${k}" value="${i}"${val===i?" checked":""}><label for="r-${k}-${i}" class="${val&&i<=val?"on":""}">${hd(!!(val&&i<=val))}<span class="sr">${WORD[i]}</span></label>`;
   return h+`</fieldset></div>`;
 }
@@ -570,7 +595,10 @@ function openRate(id){
   d.innerHTML=`<form class="dlg" id="rate-form" novalidate>
     <div class="dlg-head"><div><h2>${esc(s.title)}</h2><div class="sub">הדירוג של ${esc(S.names[r])}: מנקניקיה אחת עד חמש</div></div><button type="button" class="x" data-close aria-label="סגירה">×</button></div>
     <div class="dlg-body">
-      <div>${CATS.map(([k,l])=>critHTML(k,l,num(v[k])?v[k]:0)).join("")}</div>
+      <div>${CATS.map(([k,l])=>critHTML(k,l,num(v[k])?v[k]:0,k==="part2"&&s.part2?"אורחים: "+s.part2.guests.join(", "):"")).join("")}</div>
+      <div class="crit overall-crit"><span class="lbl" id="l-overall">דירוג כללי</span><span class="val" id="v-overall">${n10(v.overall)?v.overall+" מתוך 10":"לא דורג"}</span>
+        <fieldset class="tenscale" aria-labelledby="l-overall">${Array.from({length:10},(_,i)=>i+1).map(i=>`<input type="radio" id="r-overall-${i}" name="overall" value="${i}"${v.overall===i?" checked":""}><label for="r-overall-${i}">${i}</label>`).join("")}</fieldset>
+        <span class="help" style="grid-column:1/-1">הציון המשוקלל: חצי מהנקניקיות וחצי מהדירוג הכללי.</span></div>
       <div class="field"><label for="joke">בדיחה אהובה</label>
         <textarea class="input" id="joke" name="joke" maxlength="500" placeholder="הבדיחה שעוד נצטט אחד לשנייה">${esc(v.joke||"")}</textarea></div>
       <div class="field"><span class="lbl" id="songs-l">טופ 3 שירים</span>
@@ -584,17 +612,19 @@ function openRate(id){
   </form>`;
   d.showModal();
   const f=$("#rate-form");
-  f.addEventListener("change",e=>{const fs=e.target.closest(".hdscale");if(fs){paintScale(fs,Number(e.target.value),true);fs.closest(".crit").classList.remove("missing")}if(e.target.classList.contains("song-sel"))syncSongs(f)});
+  f.addEventListener("change",e=>{const fs=e.target.closest(".hdscale");if(fs){paintScale(fs,Number(e.target.value),true);fs.closest(".crit").classList.remove("missing")}if(e.target.name==="overall"){$("#v-overall").textContent=e.target.value+" מתוך 10";f.querySelector(".overall-crit").classList.remove("missing")}if(e.target.classList.contains("song-sel"))syncSongs(f)});
   syncSongs(f);
   f.addEventListener("submit",async e=>{
     e.preventDefault();
     const fd=new FormData(f),out={showId:id,rater:r,updatedAt:new Date().toISOString()};
     const missing=[];CATS.forEach(([k,l])=>{const x=fd.get(k);out[k]=x?Number(x):null;if(!x)missing.push(l)});
+    const ov=fd.get("overall");out.overall=ov?Number(ov):null;if(!ov)missing.push("דירוג כללי");
     const er=$("#rate-err");er.hidden=true;
     if(missing.length){
-      er.textContent="חסרות נקניקיות ב: "+missing.join(", ");er.hidden=false;
-      CATS.forEach(([k,l])=>{const row=f.querySelector(`.hdscale[data-k="${k}"]`).closest(".crit");row.classList.toggle("missing",missing.includes(l))});
-      const k=CATS.find(([,l])=>l===missing[0])[0];f.querySelector(`.hdscale[data-k="${k}"]`).closest(".crit").scrollIntoView({behavior:"smooth",block:"center"});
+      er.textContent="חסר דירוג ב: "+missing.join(", ");er.hidden=false;
+      const rowOf=l=>l==="דירוג כללי"?f.querySelector(".overall-crit"):f.querySelector(`.hdscale[data-k="${CATS.find(([,x])=>x===l)[0]}"]`).closest(".crit");
+      [...CATS.map(([,l])=>l),"דירוג כללי"].forEach(l=>rowOf(l).classList.toggle("missing",missing.includes(l)));
+      rowOf(missing[0]).scrollIntoView({behavior:"smooth",block:"center"});
       return;
     }
     out.joke=String(fd.get("joke")||"").trim();
