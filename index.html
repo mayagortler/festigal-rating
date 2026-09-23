@@ -223,6 +223,9 @@ textarea.input{min-height:96px;resize:vertical}
 .songs .s{display:grid;grid-template-columns:28px 1fr;align-items:center;gap:8px}
 .songs .s span{font-family:var(--display);font-size:28px;color:var(--rc,var(--accent));text-align:center}
 .err{color:var(--danger);font-size:14px;margin:0}
+.foot-err{flex-basis:100%}
+.crit.missing .lbl{color:var(--danger)}
+.crit.missing .hdscale label{border-color:var(--danger)}
 .toast{position:fixed;inset-inline:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));margin-inline:auto;max-width:420px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-size:15px;box-shadow:var(--shadow);z-index:100}
 .offline{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:16px}
 </style>
@@ -315,16 +318,17 @@ function mergeShows(){
   const o={};CATALOG.forEach(c=>{const st=STATE[c.id]||{};o[c.id]=Object.assign({},c,{watched:!!st.watched},st.synopsis!=null&&st.synopsis!==""?{synopsis:st.synopsis}:{})});
   S.shows=o;
 }
+function withTimeout(p,ms=12000){return Promise.race([Promise.resolve(p),new Promise((_,rej)=>setTimeout(()=>rej({code:"timeout",message:"timeout"}),ms))])}
 function supaBackend(sb){
   async function loadAll(){
-    const [r,st]=await Promise.all([sb.from("reviews").select("id,show_id,rater,data"),sb.from("show_state").select("show_id,watched,synopsis")]);
+    const [r,st]=await withTimeout(Promise.all([sb.from("reviews").select("id,show_id,rater,data"),sb.from("show_state").select("show_id,watched,synopsis")]));
     if(r.error||st.error)throw (r.error||st.error);
     const rv={};r.data.forEach(x=>rv[x.id]=Object.assign({},x.data,{showId:x.show_id,rater:x.rater}));
     const ss={};st.data.forEach(x=>ss[x.show_id]=x);
     S.reviews=rv;STATE=ss;mergeShows();S.loading=false;renderAll();
   }
   let pend=null;const soon=()=>{clearTimeout(pend);pend=setTimeout(()=>loadAll().catch(()=>{}),250)};
-  async function rpc(fn,args){const {error}=await sb.rpc(fn,Object.assign({p_code:S.code},args));if(error)throw error;await loadAll()}
+  async function rpc(fn,args){const {error}=await withTimeout(sb.rpc(fn,Object.assign({p_code:S.code},args)));if(error)throw error;try{await loadAll()}catch(_){}}
   return{
     async start(){
       try{await loadAll()}catch(e){S.loading=false;renderAll();showOffline("לא הצלחנו לטעון את הדירוגים. בדקו את החיבור ורעננו את הדף.")}
@@ -333,12 +337,18 @@ function supaBackend(sb){
     },
     saveReview:(id,r,d)=>{const data=Object.assign({},d);delete data.showId;delete data.rater;return rpc("save_review",{p_show:id,p_rater:r,p_data:data})},
     patchShow:(id,p)=>"synopsis" in p?rpc("set_synopsis",{p_show:id,p_synopsis:p.synopsis}):rpc("set_watched",{p_show:id,p_watched:!!p.watched}),
-    checkCode:async code=>{const {data,error}=await sb.rpc("check_code",{p_code:code});if(error)throw error;return data===true}
+    checkCode:async code=>{const {data,error}=await withTimeout(sb.rpc("check_code",{p_code:code}));if(error)throw error;return data===true}
   };
 }
 function showOffline(msg){const o=$("#offline");o.textContent=msg;o.hidden=false}
 
 /* ---------- family code ---------- */
+async function ensureCode(){
+  if(S.code)return true;
+  if(!B){toast("האתר עוד לא מחובר למאגר הדירוגים.");return false}
+  document.querySelectorAll("dialog[open]").forEach(d=>{if(d.id!=="dlg-code")d.close()});
+  return await askCode();
+}
 function askCode(){
   return new Promise(resolve=>{
     const d=$("#dlg-code");
@@ -362,18 +372,17 @@ function askCode(){
     });
   });
 }
+function errText(e){
+  const msg=String(e&&(e.message||e.code)||"");
+  if(/bad_code/.test(msg)||(e&&e.code==="28000")){S.code="";try{localStorage.removeItem("fg-code")}catch(_){}return "הקוד המשפחתי לא התקבל. נסו לשמור שוב ותתבקשו להזין אותו מחדש."}
+  if(e&&e.code==="timeout")return "החיבור איטי מדי והשמירה לא הושלמה. בדקו את האינטרנט ונסו שוב.";
+  return "השמירה לא הצליחה. בדקו את החיבור ונסו שוב.";
+}
 async function write(fn,okMsg){
-  if(!B){toast("עוד רגע, הנתונים נטענים.");return false}
-  if(!S.code&&!(await askCode()))return false;
-  try{await fn();if(okMsg)toast(okMsg);return true}
-  catch(e){
-    const msg=String(e&&(e.message||e.code)||"");
-    if(/bad_code/.test(msg)||(e&&e.code==="28000")){S.code="";try{localStorage.removeItem("fg-code")}catch(_){}
-      if(await askCode()){try{await fn();if(okMsg)toast(okMsg);return true}catch(_){}}
-      toast("השמירה לא הצליחה. נסו שוב.");return false}
-    toast("השמירה לא הצליחה. בדקו את החיבור ונסו שוב.");
-    return false;
-  }
+  if(!B){toast("עוד רגע, הנתונים נטענים.");return {ok:false,msg:"עוד רגע, הנתונים נטענים."}}
+  if(!S.code){const m="צריך קודם להזין את הקוד המשפחתי.";toast(m);return {ok:false,msg:m}}
+  try{await fn();if(okMsg)toast(okMsg);return {ok:true}}
+  catch(e){const m=errText(e);toast(m);return {ok:false,msg:m}}
 }
 let tT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(tT);tT=setTimeout(()=>t.hidden=true,3800)}
 
@@ -558,26 +567,31 @@ function openRate(id){
         </div></div>
       <div class="field"><label for="review">סקירה במילים</label>
         <textarea class="input" id="review" name="review" maxlength="2000">${esc(v.review||"")}</textarea></div>
-      <p class="err" id="rate-err" role="alert" hidden></p>
     </div>
-    <div class="dlg-foot"><button type="submit" class="btn primary" id="rate-save">שמירת הדירוג</button><button type="button" class="btn" data-close>ביטול</button></div>
+    <div class="dlg-foot"><p class="err foot-err" id="rate-err" role="alert" hidden></p><button type="submit" class="btn primary" id="rate-save">שמירת הדירוג</button><button type="button" class="btn" data-close>ביטול</button></div>
   </form>`;
   d.showModal();
   const f=$("#rate-form");
-  f.addEventListener("change",e=>{const fs=e.target.closest(".hdscale");if(fs)paintScale(fs,Number(e.target.value),true);if(e.target.classList.contains("song-sel"))syncSongs(f)});
+  f.addEventListener("change",e=>{const fs=e.target.closest(".hdscale");if(fs){paintScale(fs,Number(e.target.value),true);fs.closest(".crit").classList.remove("missing")}if(e.target.classList.contains("song-sel"))syncSongs(f)});
   syncSongs(f);
   f.addEventListener("submit",async e=>{
     e.preventDefault();
     const fd=new FormData(f),out={showId:id,rater:r,updatedAt:new Date().toISOString()};
     const missing=[];CATS.forEach(([k,l])=>{const x=fd.get(k);out[k]=x?Number(x):null;if(!x)missing.push(l)});
-    if(missing.length){const er=$("#rate-err");er.textContent="חסרות נקניקיות ב: "+missing.join(", ")+". בחרו מאחת עד חמש בכל קטגוריה.";er.hidden=false;const k=CATS.find(([,l])=>l===missing[0])[0];$("#r-"+k+"-1").focus();return}
+    const er=$("#rate-err");er.hidden=true;
+    if(missing.length){
+      er.textContent="חסרות נקניקיות ב: "+missing.join(", ");er.hidden=false;
+      CATS.forEach(([k,l])=>{const row=f.querySelector(`.hdscale[data-k="${k}"]`).closest(".crit");row.classList.toggle("missing",missing.includes(l))});
+      const k=CATS.find(([,l])=>l===missing[0])[0];f.querySelector(`.hdscale[data-k="${k}"]`).closest(".crit").scrollIntoView({behavior:"smooth",block:"center"});
+      return;
+    }
     out.joke=String(fd.get("joke")||"").trim();
     out.top3=[0,1,2].map(i=>String(fd.get("song"+i)||"").trim());
     out.review=String(fd.get("review")||"").trim();
     const btn=$("#rate-save");btn.disabled=true;btn.textContent="שומר...";
-    const ok=await write(async()=>{await B.saveReview(id,r,out);if(S.shows[id]&&S.shows[id].watched!==true)await B.patchShow(id,{watched:true})},"הדירוג נשמר");
+    const res=await write(()=>B.saveReview(id,r,out),"הדירוג נשמר");
     btn.disabled=false;btn.textContent="שמירת הדירוג";
-    if(ok){d.close();openDetail(id)}
+    if(res.ok){d.close();openDetail(id)}else{er.textContent=res.msg;er.hidden=false}
   });
 }
 
@@ -593,7 +607,7 @@ function openShow(id){
   $("#show-form").addEventListener("submit",async e=>{
     e.preventDefault();
     const syn=String(new FormData(e.target).get("synopsis")||"").trim();
-    if(await write(()=>B.patchShow(id,{synopsis:syn}),"התקציר עודכן")){d.close();openDetail(id)}
+    if((await write(()=>B.patchShow(id,{synopsis:syn}),"התקציר עודכן")).ok){d.close();openDetail(id)}
   });
 }
 
@@ -605,11 +619,12 @@ document.addEventListener("click",async e=>{
   if(t.dataset.filter){S.filter=t.dataset.filter;try{localStorage.setItem("fg-filter",S.filter)}catch(_){}renderList();return}
   if(t.dataset.r){S.me=t.dataset.r;try{localStorage.setItem("fg-me",S.me)}catch(_){}renderAll();return}
   if(t.dataset.open){openDetail(t.dataset.open);return}
-  if(t.dataset.rate){const id=t.dataset.rate;$("#dlg-detail").close();openRate(id);return}
-  if(t.dataset.edit){openShow(t.dataset.edit);return}
+  if(t.dataset.rate){const id=t.dataset.rate;$("#dlg-detail").close();if(!(await ensureCode())){openDetail(id);return}openRate(id);return}
+  if(t.dataset.edit){const id=t.dataset.edit;if(!(await ensureCode())){openDetail(id);return}openShow(id);return}
   if(t.dataset.watch){const id=t.dataset.watch,v=!seen(id);
     if(!v&&(rev(id,"a")||rev(id,"b"))){toast("יש כבר דירוגים לפסטיגל הזה, אז הוא נשאר ברשימת \"ראינו\".");return}
-    await write(()=>B.patchShow(id,{watched:v}),v?"סומן כראינו":"הסימון בוטל");return}
+    if(!(await ensureCode())){openDetail(id);return}
+    await write(()=>B.patchShow(id,{watched:v}),v?"סומן כראינו":"הסימון בוטל");openDetail(id);return}
 });
 $("#dlg-detail").addEventListener("close",()=>{S.openId=null});
 const sortEl=$("#sort");sortEl.value=S.sort;
