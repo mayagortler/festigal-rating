@@ -1,0 +1,44 @@
+# Supabase pauses free projects after a week without activity.
+# This pings the database twice a week so the ratings stay available.
+# If the database does not answer, the run fails and GitHub emails the repo owner.
+name: Keep database awake
+
+on:
+  schedule:
+    - cron: "17 6 * * 1,4"   # Mondays and Thursdays, 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ping Supabase
+        run: |
+          URL=$(grep -o 'https://[a-z0-9]*\.supabase\.co' config.js)
+          KEY=$(grep -o 'eyJ[^"]*' config.js)
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 30 \
+            "$URL/rest/v1/show_state?select=show_id&limit=1" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" || true)
+          echo "Supabase answered: $code"
+          if [ "$code" != "200" ]; then
+            echo "::error::The ratings database did not answer (it may be paused). Restore it at https://supabase.com/dashboard"
+            exit 1
+          fi
+
+      # GitHub turns off scheduled workflows after 60 days without repository activity.
+      - name: Keep this schedule active
+        run: |
+          last=$(git log -1 --format=%ct)
+          days=$(( ($(date +%s) - last) / 86400 ))
+          echo "Days since last commit: $days"
+          if [ "$days" -ge 45 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Keep scheduled database ping active"
+            git push
+          fi
